@@ -3,12 +3,16 @@ import requests
 from time import sleep
 import os
 from dotenv import load_dotenv
-from pprint import pprint
+import logging
 
 load_dotenv()
 API_KEY = os.environ.get("API_KEY")
 API_KEY = {'X-API-Key': API_KEY}
 shutdown = False
+
+# Set up logging configuration
+logging.basicConfig(filename='trading_log.txt', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ApiException(Exception):
     pass
@@ -22,8 +26,8 @@ def get_tender(session):
     resp = session.get('http://localhost:9999/v1/tenders')
     if resp.ok:
         tender = resp.json()
-        # print("Tender")
-        # print(tender)
+        logging.info("Tender retrieved")
+        logging.info(tender)
         return tender
 
 def filter_tender_offers(tender_offers):
@@ -40,7 +44,7 @@ def get_tick(session):
             case = resp.json()
             return case['tick']
     except Exception as e:
-        print(e)
+        logging.error(f"Error retrieving tick: {e}")
 
 def ticker_bid_ask(session, ticker):
     payload = {'ticker': ticker}
@@ -50,7 +54,7 @@ def ticker_bid_ask(session, ticker):
             book = resp.json()
             return book
     except Exception as e:
-        print(e)
+        logging.error(f"Error retrieving order book for {ticker}: {e}")
 
 def calculate_wac_and_liquidity(order_book, tender_offer):
     total_cost = 0.0
@@ -86,22 +90,23 @@ def main():
     with requests.Session() as s:
         s.headers.update(API_KEY)
         tick = get_tick(s)
+        
         while tick > 5 and tick < 295 and not shutdown:
-            print("-----------------------------------------------")
-            print(f"Tick: {tick}")
+            logging.info(f"Tick: {tick}")
 
             # Get and filter tender offers. Remove auctions.
             tender_offers = filter_tender_offers(get_tender(s))
             if len(tender_offers) == 0:
-                print("No valid tender offers available.")
+                logging.info("No valid tender offers available.")
                 sleep(1)
+                tick = get_tick(s)
                 continue
             
             # Use only the most recent tender offer
             current_tender = tender_offers[0]
             tender_ticker = current_tender['ticker'] 
             
-            # Get order books for both stocks separately
+            # Get order books for both stocks separately (for both markets)
             crzy_book = ticker_bid_ask(s, 'CRZY')
             tame_book = ticker_bid_ask(s, 'TAME')
 
@@ -111,16 +116,22 @@ def main():
             elif tender_ticker.startswith('TAME'):
                 relevant_order_book = tame_book
             else:
-                print(f"Unknown stock for ticker: {tender_ticker}")
+                logging.warning(f"Unknown stock for ticker: {tender_ticker}")
                 sleep(1)
                 continue
 
-            print("Tender offer sample")
-            print(f'Tender Details:')
-            pprint(current_tender)
-            print("-------------Decision-------------")
+            logging.info("-------------Tender Details----------------")
+            logging.info(f'Tender Details: {current_tender}')
+            
+            logging.info("----------------Decision------------------")
             decision = calculate_wac_and_liquidity(order_book=relevant_order_book, tender_offer=[current_tender])
-            print(decision)
+            
+            # Include market information in decision output
+            market_type = "Main Market" if tender_ticker.endswith('_M') else "Alternative Market"
+            if decision[0] == "Accept":
+                logging.info(f"Decision: {decision}, Market to Reverse Trade: {market_type}")
+            else:
+                logging.info(f"Decision: {decision}")
 
             sleep(1)
 
