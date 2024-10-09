@@ -51,6 +51,7 @@ def ticker_bid_ask(session, ticker):
     except Exception as e:
         print(e)
 
+
 def calculate_wac_and_liquidity(order_book, tender_offer):
     total_cost = 0.0
     total_quantity = 0.0
@@ -85,6 +86,7 @@ def main():
     with requests.Session() as s:
         s.headers.update(API_KEY)
         tick = get_tick(s)
+        
         while tick > 5 and tick < 295 and not shutdown:
             print(f"Tick: {tick}")
 
@@ -93,35 +95,49 @@ def main():
             if len(tender_offers) == 0:
                 print("No valid tender offers available.")
                 sleep(1)
+                tick = get_tick(s)
                 continue
             
             # Use only the most recent tender offer
             current_tender = tender_offers[0]
             tender_ticker = current_tender['ticker'] 
             
-            # Get order books for both stocks separately
-            crzy_book = ticker_bid_ask(s, 'CRZY')
-            tame_book = ticker_bid_ask(s, 'TAME')
+            # Get order books for both stocks separately (for both markets)
+            crzy_m_book = ticker_bid_ask(s, 'CRZY_M') 
+            crzy_a_book = ticker_bid_ask(s, 'CRZY_A')
+            tame_m_book = ticker_bid_ask(s, 'TAME_M') 
+            tame_a_book = ticker_bid_ask(s, 'TAME_A')
 
             # Determine which stock's order book to use based on the tender ticker
-            if tender_ticker.startswith('CRZY'):
-                relevant_order_book = crzy_book
-            elif tender_ticker.startswith('TAME'):
-                relevant_order_book = tame_book
+            if tender_ticker == 'CRZY_M':
+                relevant_order_book = crzy_m_book
+            elif tender_ticker == 'CRZY_A':
+                relevant_order_book = crzy_a_book
+            elif tender_ticker == 'TAME_M':
+                relevant_order_book = tame_m_book
+            elif tender_ticker == 'TAME_A':
+                relevant_order_book = tame_a_book
             else:
                 print(f"Unknown stock for ticker: {tender_ticker}")
                 sleep(1)
+                tick = get_tick(s)
                 continue
 
             print("Tender offer sample")
             print(f'Tender Details: {current_tender}')
             
             print("-------------Decision-------------")
-            decision = calculate_wac_and_liquidity(order_book=relevant_order_book, tender_offer=[current_tender])
-            print(decision)
+            if relevant_order_book is not None:
+                decision = calculate_wac_and_liquidity(order_book=relevant_order_book, tender_offer=[current_tender])
+            
+                # Include market information in decision output
+                market_type = "Main Market" if tender_ticker.endswith('_M') else "Alternative Market"
+                if decision[0] == "Accept":
+                    print(f"Decision: {decision}, Market to Reverse Trade: {market_type}")
+                else:
+                    print(f"Decision: {decision}")
 
             sleep(1)
-
             tick = get_tick(s)
 
 if __name__ == '__main__':
