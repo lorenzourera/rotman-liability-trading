@@ -105,6 +105,8 @@ def calculate_wac_and_liquidity(order_books, tender_offer):
     }
 
     contributing_orders = []
+    print("relevant_orders")
+    print(relevant_orders)
     for order in relevant_orders: # this loop will aggregate liquidity and compute wac recursively until the required volume is reached per market
         if total_quantity >= offer_quantity:
             break  # Stop if we've sourced enough liquidity
