@@ -58,6 +58,11 @@ You can install the required libraries using pip:
 * automated trading
 * order sizing based on available liquidity to minimize market impact
 
+
+## References
+* RIT Decision [cases](https://inside.rotman.utoronto.ca/financelab/rit-decision-cases/)
+* RIT Market Simulator [application](https://inside.rotman.utoronto.ca/financelab/rit-downloads/)
+
 ## Limitations
 * This code is meant as an advisor to manual trade execution.
 
