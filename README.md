@@ -60,3 +60,10 @@ You can install the required libraries using pip:
 
 ## Limitations
 * This code is meant as an advisor to manual trade execution.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
+## Contact Information
+* You may contact me at `zo125` on telegram for inquiries.
